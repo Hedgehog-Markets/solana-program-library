@@ -163,6 +163,7 @@ impl Processor {
         user_token_a_info: Option<&AccountInfo>,
         user_token_b_info: Option<&AccountInfo>,
         pool_fee_account_info: Option<&AccountInfo>,
+        swap_guardian_info: &AccountInfo
     ) -> ProgramResult {
         if swap_account_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
@@ -199,6 +200,12 @@ impl Processor {
                 return Err(SwapError::IncorrectFeeAccount.into());
             }
         }
+        if *swap_guardian_info.key != *token_swap.swap_guardian() {
+            return Err(SwapError::WrongSwapGuardian.into());
+        }
+        if !swap_guardian_info.is_signer {
+            return Err(SwapError::NoSwapGuardianSig.into());
+        }
         Ok(())
     }
 
@@ -219,6 +226,7 @@ impl Processor {
         let fee_account_info = next_account_info(account_info_iter)?;
         let destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+        let swap_guardian_info = next_account_info(account_info_iter)?;
 
         let token_program_id = *token_program_info.key;
         if SwapVersion::is_initialized(&swap_info.data.borrow()) {
@@ -318,6 +326,7 @@ impl Processor {
             pool_fee_account: *fee_account_info.key,
             fees,
             swap_curve,
+            swap_guardian: *swap_guardian_info.key
         });
         SwapVersion::pack(obj, &mut swap_info.data.borrow_mut())?;
         Ok(())
@@ -341,6 +350,7 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+        let swap_guardian_info = next_account_info(account_info_iter)?;
 
         if swap_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
@@ -379,6 +389,12 @@ impl Processor {
         }
         if *token_program_info.key != *token_swap.token_program_id() {
             return Err(SwapError::IncorrectTokenProgramId.into());
+        }
+        if *swap_guardian_info.key != *token_swap.swap_guardian() {
+            return Err(SwapError::WrongSwapGuardian.into());
+        }
+        if !swap_guardian_info.is_signer {
+            return Err(SwapError::NoSwapGuardianSig.into());
         }
 
         let source_account =
@@ -511,6 +527,7 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         let dest_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+        let swap_guardian_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
         let calculator = &token_swap.swap_curve().calculator;
@@ -529,6 +546,7 @@ impl Processor {
             Some(source_a_info),
             Some(source_b_info),
             None,
+            swap_guardian_info
         )?;
 
         let token_a = Self::unpack_token_account(token_a_info, token_swap.token_program_id())?;
@@ -618,6 +636,7 @@ impl Processor {
         let dest_token_b_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+        let swap_guardian_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
         Self::check_accounts(
@@ -632,6 +651,7 @@ impl Processor {
             Some(dest_token_a_info),
             Some(dest_token_b_info),
             Some(pool_fee_account_info),
+            swap_guardian_info
         )?;
 
         let token_a = Self::unpack_token_account(token_a_info, token_swap.token_program_id())?;
@@ -742,6 +762,7 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         let destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+        let swap_guardian_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
         let calculator = &token_swap.swap_curve().calculator;
@@ -780,6 +801,7 @@ impl Processor {
             source_a_info,
             source_b_info,
             None,
+            swap_guardian_info
         )?;
 
         let pool_mint = Self::unpack_mint(pool_mint_info, token_swap.token_program_id())?;
@@ -863,6 +885,7 @@ impl Processor {
         let destination_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+        let swap_guardian_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
         let destination_account =
@@ -896,6 +919,7 @@ impl Processor {
             destination_a_info,
             destination_b_info,
             Some(pool_fee_account_info),
+            swap_guardian_info
         )?;
 
         let pool_mint = Self::unpack_mint(pool_mint_info, token_swap.token_program_id())?;
@@ -1133,6 +1157,12 @@ impl PrintProgramError for SwapError {
             SwapError::UnsupportedCurveOperation => {
                 msg!("Error: The operation cannot be performed on the given curve")
             }
+            SwapError::WrongSwapGuardian => {
+                msg!("Error: The provided swap guardian is incorrect")
+            }
+            SwapError::NoSwapGuardianSig => {
+                msg!("Error: No swap guardian signature")
+            }
         }
     }
 }
@@ -1243,7 +1273,7 @@ mod tests {
         token_b_key: Pubkey,
         token_b_account: Account,
         token_b_mint_key: Pubkey,
-        token_b_mint_account: Account,
+        token_b_mint_account: Account
     }
 
     impl SwapAccountInfo {
@@ -1318,7 +1348,7 @@ mod tests {
                 token_b_key,
                 token_b_account,
                 token_b_mint_key,
-                token_b_mint_account,
+                token_b_mint_account
             }
         }
 
@@ -1336,6 +1366,7 @@ mod tests {
                     &self.pool_token_key,
                     self.fees.clone(),
                     self.swap_curve.clone(),
+                    &Pubkey::default()
                 )
                 .unwrap(),
                 vec![
@@ -1347,6 +1378,7 @@ mod tests {
                     &mut self.pool_fee_account,
                     &mut self.pool_token_account,
                     &mut Account::default(),
+                    &mut Account::default()
                 ],
             )
         }
@@ -1468,6 +1500,7 @@ mod tests {
                         amount_in,
                         minimum_amount_out,
                     },
+                    &Pubkey::default()
                 )
                 .unwrap(),
                 vec![
@@ -1481,6 +1514,7 @@ mod tests {
                     &mut self.pool_mint_account,
                     &mut self.pool_fee_account,
                     &mut Account::default(),
+                    &mut Account::default()
                 ],
             )?;
 
@@ -1559,6 +1593,7 @@ mod tests {
                         maximum_token_a_amount,
                         maximum_token_b_amount,
                     },
+                    &Pubkey::default()
                 )
                 .unwrap(),
                 vec![
@@ -1572,6 +1607,7 @@ mod tests {
                     &mut self.pool_mint_account,
                     depositor_pool_account,
                     &mut Account::default(),
+                    &mut Account::default()
                 ],
             )
         }
@@ -1630,6 +1666,7 @@ mod tests {
                         minimum_token_a_amount,
                         minimum_token_b_amount,
                     },
+                    &Pubkey::default()
                 )
                 .unwrap(),
                 vec![
@@ -1644,6 +1681,7 @@ mod tests {
                     token_b_account,
                     &mut self.pool_fee_account,
                     &mut Account::default(),
+                    &mut Account::default()
                 ],
             )
         }
@@ -1694,6 +1732,7 @@ mod tests {
                         source_token_amount,
                         minimum_pool_token_amount,
                     },
+                    &Pubkey::default()
                 )
                 .unwrap(),
                 vec![
@@ -1706,6 +1745,7 @@ mod tests {
                     &mut self.pool_mint_account,
                     deposit_pool_account,
                     &mut Account::default(),
+                    &mut Account::default()
                 ],
             )
         }
@@ -1758,6 +1798,7 @@ mod tests {
                         destination_token_amount,
                         maximum_pool_token_amount,
                     },
+                    &Pubkey::default()
                 )
                 .unwrap(),
                 vec![
@@ -1771,6 +1812,7 @@ mod tests {
                     destination_account,
                     &mut self.pool_fee_account,
                     &mut Account::default(),
+                    &mut Account::default()
                 ],
             )
         }
@@ -2420,6 +2462,7 @@ mod tests {
                         &accounts.pool_token_key,
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -2431,6 +2474,7 @@ mod tests {
                         &mut accounts.pool_fee_account,
                         &mut accounts.pool_token_account,
                         &mut Account::default(),
+                        &mut Account::default() 
                     ],
                 )
             );
@@ -2605,6 +2649,7 @@ mod tests {
                         &accounts.pool_token_key,
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -2616,6 +2661,7 @@ mod tests {
                         &mut accounts.pool_fee_account,
                         &mut accounts.pool_token_account,
                         &mut Account::default(),
+                        &mut Account::default()
                     ],
                     &constraints,
                 )
@@ -2676,6 +2722,7 @@ mod tests {
                         &accounts.pool_token_key,
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -2687,6 +2734,7 @@ mod tests {
                         &mut accounts.pool_fee_account,
                         &mut accounts.pool_token_account,
                         &mut Account::default(),
+                        &mut Account::default()
                     ],
                     &constraints,
                 )
@@ -2743,6 +2791,7 @@ mod tests {
                     &accounts.pool_token_key,
                     accounts.fees,
                     accounts.swap_curve.clone(),
+                    &Pubkey::default()
                 )
                 .unwrap(),
                 vec![
@@ -2754,6 +2803,7 @@ mod tests {
                     &mut accounts.pool_fee_account,
                     &mut accounts.pool_token_account,
                     &mut Account::default(),
+                    &mut Account::default()
                 ],
                 &constraints,
             )
@@ -3085,6 +3135,7 @@ mod tests {
                             maximum_token_a_amount: deposit_a,
                             maximum_token_b_amount: deposit_b,
                         },
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -3098,6 +3149,7 @@ mod tests {
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
                         &mut Account::default(),
+                        &mut Account::default()
                     ],
                 )
             );
@@ -3134,6 +3186,7 @@ mod tests {
                             maximum_token_a_amount: deposit_a,
                             maximum_token_b_amount: deposit_b,
                         },
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -3147,6 +3200,7 @@ mod tests {
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
                         &mut Account::default(),
+                        &mut Account::default()
                     ],
                 )
             );
@@ -3743,7 +3797,8 @@ mod tests {
                             pool_token_amount: withdraw_amount.try_into().unwrap(),
                             minimum_token_a_amount,
                             minimum_token_b_amount,
-                        }
+                        },
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -3758,6 +3813,7 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_fee_account,
                         &mut Account::default(),
+                        &mut Account::default()
                     ],
                 )
             );
@@ -3801,6 +3857,7 @@ mod tests {
                             minimum_token_a_amount,
                             minimum_token_b_amount,
                         },
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -3815,6 +3872,7 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_fee_account,
                         &mut Account::default(),
+                        &mut Account::default()
                     ],
                 )
             );
@@ -4430,6 +4488,7 @@ mod tests {
                             source_token_amount: deposit_a,
                             minimum_pool_token_amount: pool_amount,
                         },
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -4442,6 +4501,7 @@ mod tests {
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
                         &mut Account::default(),
+                        &mut Account::default()
                     ],
                 )
             );
@@ -4476,6 +4536,7 @@ mod tests {
                             source_token_amount: deposit_a,
                             minimum_pool_token_amount: pool_amount,
                         },
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -4488,6 +4549,7 @@ mod tests {
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
                         &mut Account::default(),
+                        &mut Account::default()
                     ],
                 )
             );
@@ -4996,7 +5058,8 @@ mod tests {
                         WithdrawSingleTokenTypeExactAmountOut {
                             destination_token_amount: destination_a_amount,
                             maximum_pool_token_amount,
-                        }
+                        },
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -5010,6 +5073,7 @@ mod tests {
                         &mut token_a_account,
                         &mut accounts.pool_fee_account,
                         &mut Account::default(),
+                        &mut Account::default()
                     ],
                 )
             );
@@ -5050,7 +5114,8 @@ mod tests {
                         WithdrawSingleTokenTypeExactAmountOut {
                             destination_token_amount: destination_a_amount,
                             maximum_pool_token_amount,
-                        }
+                        },
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -5064,6 +5129,7 @@ mod tests {
                         &mut token_a_account,
                         &mut accounts.pool_fee_account,
                         &mut Account::default(),
+                        &mut Account::default()
                     ],
                 )
             );
@@ -5712,6 +5778,7 @@ mod tests {
                 &accounts.pool_token_key,
                 accounts.fees.clone(),
                 accounts.swap_curve.clone(),
+                &Pubkey::default()
             )
             .unwrap(),
             vec![
@@ -5723,6 +5790,7 @@ mod tests {
                 &mut accounts.pool_fee_account,
                 &mut accounts.pool_token_account,
                 &mut Account::default(),
+                &mut Account::default()
             ],
             &constraints,
         )
@@ -5767,6 +5835,7 @@ mod tests {
                     amount_in,
                     minimum_amount_out,
                 },
+                &Pubkey::default()
             )
             .unwrap(),
             vec![
@@ -5779,6 +5848,7 @@ mod tests {
                 &mut token_b_account,
                 &mut accounts.pool_mint_account,
                 &mut accounts.pool_fee_account,
+                &mut Account::default(),
                 &mut Account::default(),
                 &mut pool_account,
             ],
@@ -5961,6 +6031,7 @@ mod tests {
                             amount_in: initial_a,
                             minimum_amount_out: minimum_token_b_amount,
                         },
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -5974,6 +6045,7 @@ mod tests {
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
                         &mut Account::default(),
+                        &mut Account::default()
                     ],
                 ),
             );
@@ -6036,6 +6108,7 @@ mod tests {
                             amount_in: initial_a,
                             minimum_amount_out: minimum_token_b_amount,
                         },
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -6049,6 +6122,7 @@ mod tests {
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
                         &mut Account::default(),
+                        &mut Account::default()
                     ],
                 ),
             );
@@ -6205,6 +6279,7 @@ mod tests {
                             amount_in: initial_a,
                             minimum_amount_out: minimum_token_b_amount,
                         },
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -6218,6 +6293,7 @@ mod tests {
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
                         &mut Account::default(),
+                        &mut Account::default()
                     ],
                 ),
             );
@@ -6363,6 +6439,7 @@ mod tests {
                         amount_in: initial_a,
                         minimum_amount_out: minimum_token_b_amount,
                     },
+                    &Pubkey::default()
                 )
                 .unwrap(),
                 vec![
@@ -6376,6 +6453,7 @@ mod tests {
                     &mut accounts.pool_mint_account,
                     &mut accounts.pool_fee_account,
                     &mut Account::default(),
+                    &mut Account::default()
                 ],
                 &constraints,
             )
@@ -6437,6 +6515,7 @@ mod tests {
                             amount_in: initial_a,
                             minimum_amount_out: 0,
                         },
+                        &Pubkey::default()
                     )
                     .unwrap(),
                     vec![
@@ -6449,6 +6528,7 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                         &mut bad_token_a_account,
                     ],
