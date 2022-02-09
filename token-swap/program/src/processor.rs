@@ -201,10 +201,10 @@ impl Processor {
             }
         }
         if *swap_guardian_info.key != *token_swap.swap_guardian() {
-            return Err(SwapError::WrongSwapGuardian.into());
+            return Err(SwapError::IncorrectSwapGuardian.into());
         }
         if !swap_guardian_info.is_signer {
-            return Err(SwapError::NoSwapGuardianSig.into());
+            return Err(SwapError::NoSwapGuardianSignature.into());
         }
         Ok(())
     }
@@ -391,10 +391,10 @@ impl Processor {
             return Err(SwapError::IncorrectTokenProgramId.into());
         }
         if *swap_guardian_info.key != *token_swap.swap_guardian() {
-            return Err(SwapError::WrongSwapGuardian.into());
+            return Err(SwapError::IncorrectSwapGuardian.into());
         }
         if !swap_guardian_info.is_signer {
-            return Err(SwapError::NoSwapGuardianSig.into());
+            return Err(SwapError::NoSwapGuardianSignature.into());
         }
 
         let source_account =
@@ -1157,10 +1157,10 @@ impl PrintProgramError for SwapError {
             SwapError::UnsupportedCurveOperation => {
                 msg!("Error: The operation cannot be performed on the given curve")
             }
-            SwapError::WrongSwapGuardian => {
+            SwapError::IncorrectSwapGuardian => {
                 msg!("Error: The provided swap guardian is incorrect")
             }
-            SwapError::NoSwapGuardianSig => {
+            SwapError::NoSwapGuardianSignature => {
                 msg!("Error: No swap guardian signature")
             }
         }
