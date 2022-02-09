@@ -362,7 +362,7 @@ pub fn initialize(
     destination_pubkey: &Pubkey,
     fees: Fees,
     swap_curve: SwapCurve,
-    swap_guardian: &Pubkey
+    swap_guardian: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let init_data = SwapInstruction::Initialize(Initialize { fees, swap_curve });
     let data = init_data.pack();
@@ -376,7 +376,7 @@ pub fn initialize(
         AccountMeta::new_readonly(*fee_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*swap_guardian, false)
+        AccountMeta::new_readonly(*swap_guardian, false),
     ];
 
     Ok(Instruction {
@@ -400,7 +400,7 @@ pub fn deposit_all_token_types(
     pool_mint_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
     instruction: DepositAllTokenTypes,
-    swap_guardian: &Pubkey
+    swap_guardian: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let data = SwapInstruction::DepositAllTokenTypes(instruction).pack();
 
@@ -415,7 +415,7 @@ pub fn deposit_all_token_types(
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*swap_guardian, true)
+        AccountMeta::new_readonly(*swap_guardian, true),
     ];
 
     Ok(Instruction {
@@ -440,7 +440,7 @@ pub fn withdraw_all_token_types(
     destination_token_a_pubkey: &Pubkey,
     destination_token_b_pubkey: &Pubkey,
     instruction: WithdrawAllTokenTypes,
-    swap_guardian: &Pubkey
+    swap_guardian: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let data = SwapInstruction::WithdrawAllTokenTypes(instruction).pack();
 
@@ -456,7 +456,7 @@ pub fn withdraw_all_token_types(
         AccountMeta::new(*destination_token_b_pubkey, false),
         AccountMeta::new(*fee_account_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*swap_guardian, true)
+        AccountMeta::new_readonly(*swap_guardian, true),
     ];
 
     Ok(Instruction {
@@ -479,7 +479,7 @@ pub fn deposit_single_token_type_exact_amount_in(
     pool_mint_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
     instruction: DepositSingleTokenTypeExactAmountIn,
-    swap_guardian: &Pubkey
+    swap_guardian: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let data = SwapInstruction::DepositSingleTokenTypeExactAmountIn(instruction).pack();
 
@@ -493,7 +493,7 @@ pub fn deposit_single_token_type_exact_amount_in(
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*swap_guardian, true)
+        AccountMeta::new_readonly(*swap_guardian, true),
     ];
 
     Ok(Instruction {
@@ -517,7 +517,7 @@ pub fn withdraw_single_token_type_exact_amount_out(
     swap_token_b_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
     instruction: WithdrawSingleTokenTypeExactAmountOut,
-    swap_guardian: &Pubkey
+    swap_guardian: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let data = SwapInstruction::WithdrawSingleTokenTypeExactAmountOut(instruction).pack();
 
@@ -532,7 +532,7 @@ pub fn withdraw_single_token_type_exact_amount_out(
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new(*fee_account_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*swap_guardian, true)
+        AccountMeta::new_readonly(*swap_guardian, true),
     ];
 
     Ok(Instruction {
@@ -557,7 +557,7 @@ pub fn swap(
     pool_fee_pubkey: &Pubkey,
     host_fee_pubkey: Option<&Pubkey>,
     instruction: Swap,
-    swap_guardian: &Pubkey
+    swap_guardian: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let data = SwapInstruction::Swap(instruction).pack();
 

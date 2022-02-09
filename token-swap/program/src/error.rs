@@ -107,7 +107,7 @@ pub enum SwapError {
     IncorrectSwapGuardian,
     /// The swap guardian is not a signer.
     #[error("No swap guardian signature")]
-    NoSwapGuardianSignature
+    NoSwapGuardianSignature,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

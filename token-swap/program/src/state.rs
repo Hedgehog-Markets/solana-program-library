@@ -129,7 +129,7 @@ pub struct SwapV1 {
     pub swap_curve: SwapCurve,
 
     /// Gates interactions with the swap.
-    pub swap_guardian: Pubkey
+    pub swap_guardian: Pubkey,
 }
 
 impl SwapState for SwapV1 {
@@ -206,7 +206,7 @@ impl Pack for SwapV1 {
             pool_fee_account,
             fees,
             swap_curve,
-            swap_guardian
+            swap_guardian,
         ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33, 32];
         is_initialized[0] = self.is_initialized as u8;
         bump_seed[0] = self.bump_seed;
@@ -238,7 +238,7 @@ impl Pack for SwapV1 {
             pool_fee_account,
             fees,
             swap_curve,
-            swap_guardian
+            swap_guardian,
         ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33, 32];
         Ok(Self {
             is_initialized: match is_initialized {
@@ -256,7 +256,7 @@ impl Pack for SwapV1 {
             pool_fee_account: Pubkey::new_from_array(*pool_fee_account),
             fees: Fees::unpack_from_slice(fees)?,
             swap_curve: SwapCurve::unpack_from_slice(swap_curve)?,
-            swap_guardian: Pubkey::new_from_array(*swap_guardian)
+            swap_guardian: Pubkey::new_from_array(*swap_guardian),
         })
     }
 }
@@ -313,7 +313,7 @@ mod tests {
             pool_fee_account: TEST_POOL_FEE_ACCOUNT,
             fees: TEST_FEES,
             swap_curve: swap_curve.clone(),
-            swap_guardian: TEST_SWAP_GUARDIAN
+            swap_guardian: TEST_SWAP_GUARDIAN,
         });
 
         let mut packed = [0u8; SwapVersion::LATEST_LEN];
@@ -354,7 +354,7 @@ mod tests {
             pool_fee_account: TEST_POOL_FEE_ACCOUNT,
             fees: TEST_FEES,
             swap_curve,
-            swap_guardian: TEST_SWAP_GUARDIAN
+            swap_guardian: TEST_SWAP_GUARDIAN,
         };
 
         let mut packed = [0u8; SwapV1::LEN];
