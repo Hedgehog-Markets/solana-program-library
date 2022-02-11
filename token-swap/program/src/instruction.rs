@@ -97,15 +97,19 @@ pub enum SwapInstruction {
     ///   Initializes a new swap
     ///
     ///   0. `[writable, signer]` New Token-swap to create.
-    ///   1. `[]` swap authority derived from `create_program_address(&[Token-swap account])`
+    ///   1. `[]` swap authority derived from
+    ///      `create_program_address(&[Token-swap account])`
     ///   2. `[]` token_a Account. Must be non zero, owned by swap authority.
     ///   3. `[]` token_b Account. Must be non zero, owned by swap authority.
-    ///   4. `[writable]` Pool Token Mint. Must be empty, owned by swap authority.
-    ///   5. `[]` Pool Token Account to deposit trading and withdraw fees.
-    ///   Must be empty, not owned by swap authority
+    ///   4. `[writable]` Pool Token Mint. Must be empty, owned by swap
+    ///      authority.
+    ///   5. `[]` Pool Token Account to deposit trading and withdraw fees. Must
+    ///   be empty, not owned by swap authority
     ///   6. `[writable]` Pool Token Account to deposit the initial pool token
     ///   supply.  Must be empty, not owned by swap authority.
     ///   7. `[]` Token program id
+    ///   8. `[]` Account that gates swap actions. Must sign for the swap to be
+    ///      used.
     Initialize(Initialize),
 
     ///   Swap the tokens in the pool.
@@ -113,19 +117,23 @@ pub enum SwapInstruction {
     ///   0. `[]` Token-swap
     ///   1. `[]` swap authority
     ///   2. `[]` user transfer authority
-    ///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by user transfer authority,
-    ///   4. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
-    ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
-    ///   6. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
+    ///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by
+    ///   user transfer authority, 4. `[writable]` token_(A|B) Base Account to
+    ///   swap INTO.  Must be the SOURCE token. 5. `[writable]` token_(A|B) Base
+    ///   Account to swap FROM.  Must be the DESTINATION token. 6. `[writable]`
+    ///   token_(A|B) DESTINATION Account assigned to USER as the owner.
     ///   7. `[writable]` Pool token mint, to generate trading fees
     ///   8. `[writable]` Fee account, to receive trading fees
     ///   9. `[]` Token program id
-    ///   10. `[optional, writable]` Host fee account to receive additional trading fees
+    ///  10. `[signer]` Account that gates swap actions. Must sign for the swap
+    ///      to be used.
+    ///  11. `[optional, writable]` Host fee account to receive additional
+    ///       trading fees.
     Swap(Swap),
 
     ///   Deposit both types of tokens into the pool.  The output is a "pool"
-    ///   token representing ownership in the pool. Inputs are converted to
-    ///   the current ratio.
+    ///   token representing ownership in the pool. Inputs are converted to the
+    ///   current ratio.
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` swap authority
@@ -135,8 +143,11 @@ pub enum SwapInstruction {
     ///   5. `[writable]` token_a Base Account to deposit into.
     ///   6. `[writable]` token_b Base Account to deposit into.
     ///   7. `[writable]` Pool MINT account, swap authority is the owner.
-    ///   8. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   8. `[writable]` Pool Account to deposit the generated tokens, user is
+    ///      the owner.
     ///   9. `[]` Token program id
+    ///  10. `[signer]` Account that gates swap actions. Must sign for the swap
+    ///      to be used.
     DepositAllTokenTypes(DepositAllTokenTypes),
 
     ///   Withdraw both types of tokens from the pool at the current ratio, given
@@ -147,13 +158,16 @@ pub enum SwapInstruction {
     ///   1. `[]` swap authority
     ///   2. `[]` user transfer authority
     ///   3. `[writable]` Pool mint account, swap authority is the owner
-    ///   4. `[writable]` SOURCE Pool account, amount is transferable by user transfer authority.
+    ///   4. `[writable]` SOURCE Pool account, amount is transferable by user
+    ///      transfer authority.
     ///   5. `[writable]` token_a Swap Account to withdraw FROM.
     ///   6. `[writable]` token_b Swap Account to withdraw FROM.
     ///   7. `[writable]` token_a user Account to credit.
     ///   8. `[writable]` token_b user Account to credit.
     ///   9. `[writable]` Fee account, to receive withdrawal fees
     ///   10. `[]` Token program id
+    ///   11. `[signer]` Account that gates swap actions. Must sign for the swap
+    ///      to be used.
     WithdrawAllTokenTypes(WithdrawAllTokenTypes),
 
     ///   Deposit one type of tokens into the pool.  The output is a "pool" token
@@ -163,12 +177,16 @@ pub enum SwapInstruction {
     ///   0. `[]` Token-swap
     ///   1. `[]` swap authority
     ///   2. `[]` user transfer authority
-    ///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by user transfer authority,
+    ///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by
+    ///      user transfer authority,
     ///   4. `[writable]` token_a Swap Account, may deposit INTO.
     ///   5. `[writable]` token_b Swap Account, may deposit INTO.
     ///   6. `[writable]` Pool MINT account, swap authority is the owner.
-    ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   7. `[writable]` Pool Account to deposit the generated tokens, user is
+    ///      the owner.
     ///   8. `[]` Token program id
+    ///   9. `[signer]` Account that gates swap actions. Must sign for the swap
+    ///      to be used.
     DepositSingleTokenTypeExactAmountIn(DepositSingleTokenTypeExactAmountIn),
 
     ///   Withdraw one token type from the pool at the current ratio given the
@@ -178,12 +196,15 @@ pub enum SwapInstruction {
     ///   1. `[]` swap authority
     ///   2. `[]` user transfer authority
     ///   3. `[writable]` Pool mint account, swap authority is the owner
-    ///   4. `[writable]` SOURCE Pool account, amount is transferable by user transfer authority.
+    ///   4. `[writable]` SOURCE Pool account, amount is transferable by user
+    ///      transfer authority.
     ///   5. `[writable]` token_a Swap Account to potentially withdraw from.
     ///   6. `[writable]` token_b Swap Account to potentially withdraw from.
     ///   7. `[writable]` token_(A|B) User Account to credit
     ///   8. `[writable]` Fee account, to receive withdrawal fees
     ///   9. `[]` Token program id
+    ///  10. `[signer]` Account that gates swap actions. Must sign for the swap
+    ///      to be used.
     WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut),
 }
 
@@ -341,6 +362,7 @@ pub fn initialize(
     destination_pubkey: &Pubkey,
     fees: Fees,
     swap_curve: SwapCurve,
+    swap_guardian: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let init_data = SwapInstruction::Initialize(Initialize { fees, swap_curve });
     let data = init_data.pack();
@@ -354,6 +376,7 @@ pub fn initialize(
         AccountMeta::new_readonly(*fee_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(*swap_guardian, false),
     ];
 
     Ok(Instruction {
@@ -377,6 +400,7 @@ pub fn deposit_all_token_types(
     pool_mint_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
     instruction: DepositAllTokenTypes,
+    swap_guardian: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let data = SwapInstruction::DepositAllTokenTypes(instruction).pack();
 
@@ -391,6 +415,7 @@ pub fn deposit_all_token_types(
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(*swap_guardian, true),
     ];
 
     Ok(Instruction {
@@ -415,6 +440,7 @@ pub fn withdraw_all_token_types(
     destination_token_a_pubkey: &Pubkey,
     destination_token_b_pubkey: &Pubkey,
     instruction: WithdrawAllTokenTypes,
+    swap_guardian: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let data = SwapInstruction::WithdrawAllTokenTypes(instruction).pack();
 
@@ -430,6 +456,7 @@ pub fn withdraw_all_token_types(
         AccountMeta::new(*destination_token_b_pubkey, false),
         AccountMeta::new(*fee_account_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(*swap_guardian, true),
     ];
 
     Ok(Instruction {
@@ -452,6 +479,7 @@ pub fn deposit_single_token_type_exact_amount_in(
     pool_mint_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
     instruction: DepositSingleTokenTypeExactAmountIn,
+    swap_guardian: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let data = SwapInstruction::DepositSingleTokenTypeExactAmountIn(instruction).pack();
 
@@ -465,6 +493,7 @@ pub fn deposit_single_token_type_exact_amount_in(
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(*swap_guardian, true),
     ];
 
     Ok(Instruction {
@@ -488,6 +517,7 @@ pub fn withdraw_single_token_type_exact_amount_out(
     swap_token_b_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
     instruction: WithdrawSingleTokenTypeExactAmountOut,
+    swap_guardian: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let data = SwapInstruction::WithdrawSingleTokenTypeExactAmountOut(instruction).pack();
 
@@ -502,6 +532,7 @@ pub fn withdraw_single_token_type_exact_amount_out(
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new(*fee_account_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(*swap_guardian, true),
     ];
 
     Ok(Instruction {
@@ -526,6 +557,7 @@ pub fn swap(
     pool_fee_pubkey: &Pubkey,
     host_fee_pubkey: Option<&Pubkey>,
     instruction: Swap,
+    swap_guardian: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let data = SwapInstruction::Swap(instruction).pack();
 
@@ -540,6 +572,7 @@ pub fn swap(
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*pool_fee_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(*swap_guardian, true),
     ];
     if let Some(host_fee_pubkey) = host_fee_pubkey {
         accounts.push(AccountMeta::new(*host_fee_pubkey, false));

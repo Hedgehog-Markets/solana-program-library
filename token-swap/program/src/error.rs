@@ -102,6 +102,12 @@ pub enum SwapError {
     /// The operation cannot be performed on the given curve
     #[error("The operation cannot be performed on the given curve")]
     UnsupportedCurveOperation,
+    /// Incorrect swap guardian was provided with the operation.
+    #[error("The provided swap guardian is incorrect")]
+    IncorrectSwapGuardian,
+    /// The swap guardian is not a signer.
+    #[error("No swap guardian signature")]
+    NoSwapGuardianSignature,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

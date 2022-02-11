@@ -38,6 +38,8 @@ pub trait SwapState {
     fn fees(&self) -> &Fees;
     /// Curve associated with swap
     fn swap_curve(&self) -> &SwapCurve;
+    /// Guardian for the swap.
+    fn swap_guardian(&self) -> &Pubkey;
 }
 
 /// All versions of SwapState
@@ -125,6 +127,9 @@ pub struct SwapV1 {
     /// Swap curve parameters, to be unpacked and used by the SwapCurve, which
     /// calculates swaps, deposits, and withdrawals
     pub swap_curve: SwapCurve,
+
+    /// Gates interactions with the swap.
+    pub swap_guardian: Pubkey,
 }
 
 impl SwapState for SwapV1 {
@@ -171,6 +176,10 @@ impl SwapState for SwapV1 {
     fn swap_curve(&self) -> &SwapCurve {
         &self.swap_curve
     }
+
+    fn swap_guardian(&self) -> &Pubkey {
+        &self.swap_guardian
+    }
 }
 
 impl Sealed for SwapV1 {}
@@ -181,10 +190,10 @@ impl IsInitialized for SwapV1 {
 }
 
 impl Pack for SwapV1 {
-    const LEN: usize = 323;
+    const LEN: usize = 355;
 
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 323];
+        let output = array_mut_ref![output, 0, 355];
         let (
             is_initialized,
             bump_seed,
@@ -197,7 +206,8 @@ impl Pack for SwapV1 {
             pool_fee_account,
             fees,
             swap_curve,
-        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33];
+            swap_guardian,
+        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33, 32];
         is_initialized[0] = self.is_initialized as u8;
         bump_seed[0] = self.bump_seed;
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
@@ -209,11 +219,12 @@ impl Pack for SwapV1 {
         pool_fee_account.copy_from_slice(self.pool_fee_account.as_ref());
         self.fees.pack_into_slice(&mut fees[..]);
         self.swap_curve.pack_into_slice(&mut swap_curve[..]);
+        swap_guardian.copy_from_slice(self.swap_guardian.as_ref());
     }
 
     /// Unpacks a byte buffer into a [SwapV1](struct.SwapV1.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, 323];
+        let input = array_ref![input, 0, 355];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             is_initialized,
@@ -227,7 +238,8 @@ impl Pack for SwapV1 {
             pool_fee_account,
             fees,
             swap_curve,
-        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33];
+            swap_guardian,
+        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33, 32];
         Ok(Self {
             is_initialized: match is_initialized {
                 [0] => false,
@@ -244,6 +256,7 @@ impl Pack for SwapV1 {
             pool_fee_account: Pubkey::new_from_array(*pool_fee_account),
             fees: Fees::unpack_from_slice(fees)?,
             swap_curve: SwapCurve::unpack_from_slice(swap_curve)?,
+            swap_guardian: Pubkey::new_from_array(*swap_guardian),
         })
     }
 }
@@ -274,6 +287,7 @@ mod tests {
     const TEST_TOKEN_A_MINT: Pubkey = Pubkey::new_from_array([5u8; 32]);
     const TEST_TOKEN_B_MINT: Pubkey = Pubkey::new_from_array([6u8; 32]);
     const TEST_POOL_FEE_ACCOUNT: Pubkey = Pubkey::new_from_array([7u8; 32]);
+    const TEST_SWAP_GUARDIAN: Pubkey = Pubkey::new_from_array([8u8; 32]);
 
     const TEST_CURVE_TYPE: u8 = 2;
     const TEST_AMP: u64 = 1;
@@ -299,6 +313,7 @@ mod tests {
             pool_fee_account: TEST_POOL_FEE_ACCOUNT,
             fees: TEST_FEES,
             swap_curve: swap_curve.clone(),
+            swap_guardian: TEST_SWAP_GUARDIAN,
         });
 
         let mut packed = [0u8; SwapVersion::LATEST_LEN];
@@ -316,6 +331,7 @@ mod tests {
         assert_eq!(*unpacked.pool_fee_account(), TEST_POOL_FEE_ACCOUNT);
         assert_eq!(*unpacked.fees(), TEST_FEES);
         assert_eq!(*unpacked.swap_curve(), swap_curve);
+        assert_eq!(*unpacked.swap_guardian(), TEST_SWAP_GUARDIAN);
     }
 
     #[test]
@@ -338,6 +354,7 @@ mod tests {
             pool_fee_account: TEST_POOL_FEE_ACCOUNT,
             fees: TEST_FEES,
             swap_curve,
+            swap_guardian: TEST_SWAP_GUARDIAN,
         };
 
         let mut packed = [0u8; SwapV1::LEN];
@@ -364,6 +381,7 @@ mod tests {
         packed.push(TEST_CURVE_TYPE);
         packed.extend_from_slice(&TEST_AMP.to_le_bytes());
         packed.extend_from_slice(&[0u8; 24]);
+        packed.extend_from_slice(&TEST_SWAP_GUARDIAN.to_bytes());
         let unpacked = SwapV1::unpack(&packed).unwrap();
         assert_eq!(swap_info, unpacked);
 
