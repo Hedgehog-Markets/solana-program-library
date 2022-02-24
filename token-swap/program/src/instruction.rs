@@ -90,6 +90,15 @@ pub struct WithdrawSingleTokenTypeExactAmountOut {
     pub maximum_pool_token_amount: u64,
 }
 
+/// DepositSingleTokenTypeNoPoolOwnership instruction data
+#[cfg_attr(feature = "fuzz", derive(Arbitrary))]
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct DepositSingleTokenTypeNoPoolOwnership {
+    /// Token amount to deposit
+    pub source_token_amount: u64,
+}
+
 /// Instructions supported by the token swap program.
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -206,6 +215,22 @@ pub enum SwapInstruction {
     ///  10. `[signer]` Account that gates swap actions. Must sign for the swap
     ///      to be used.
     WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut),
+
+    /// Deposit one token type, without minting pool tokens to the depositor.
+    /// Input token is converted as if a swap and deposit all token types were
+    /// performed.
+    ///
+    ///   0. `[]` Token-swap
+    ///   1. `[]` swap authority
+    ///   2. `[]` user transfer authority
+    ///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by
+    ///      user transfer authority,
+    ///   4. `[writable]` token_a Swap Account, may deposit INTO.
+    ///   5. `[writable]` token_b Swap Account, may deposit INTO.
+    ///   6. `[]` Token program id
+    ///   7. `[signer]` Account that gates swap actions. Must sign for the swap
+    ///      to be used.
+    DepositSingleTokenTypeNoPoolOwnership(DepositSingleTokenTypeNoPoolOwnership),
 }
 
 impl SwapInstruction {
@@ -265,6 +290,12 @@ impl SwapInstruction {
                 Self::WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut {
                     destination_token_amount,
                     maximum_pool_token_amount,
+                })
+            }
+            6 => {
+                let (source_token_amount, _rest) = Self::unpack_u64(rest)?;
+                Self::DepositSingleTokenTypeNoPoolOwnership(DepositSingleTokenTypeNoPoolOwnership {
+                    source_token_amount,
                 })
             }
             _ => return Err(SwapError::InvalidInstruction.into()),
@@ -343,6 +374,14 @@ impl SwapInstruction {
                 buf.push(5);
                 buf.extend_from_slice(&destination_token_amount.to_le_bytes());
                 buf.extend_from_slice(&maximum_pool_token_amount.to_le_bytes());
+            }
+            Self::DepositSingleTokenTypeNoPoolOwnership(
+                DepositSingleTokenTypeNoPoolOwnership {
+                    source_token_amount,
+                },
+            ) => {
+                buf.push(6);
+                buf.extend_from_slice(&source_token_amount.to_le_bytes());
             }
         }
         buf
@@ -585,6 +624,39 @@ pub fn swap(
     })
 }
 
+/// Creates a `deposit_single_token_type_no_pool_ownership` instruction.
+pub fn deposit_single_token_type_no_pool_ownership(
+    program_id: &Pubkey,
+    token_program_id: &Pubkey,
+    swap_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    user_transfer_authority_pubkey: &Pubkey,
+    source_pubkey: &Pubkey,
+    swap_token_a_pubkey: &Pubkey,
+    swap_token_b_pubkey: &Pubkey,
+    swap_guardian: &Pubkey,
+    instruction: DepositSingleTokenTypeNoPoolOwnership,
+) -> Result<Instruction, ProgramError> {
+    let data = SwapInstruction::DepositSingleTokenTypeNoPoolOwnership(instruction).pack();
+
+    let mut accounts = vec![
+        AccountMeta::new_readonly(*swap_pubkey, false),
+        AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*user_transfer_authority_pubkey, true),
+        AccountMeta::new(*source_pubkey, false),
+        AccountMeta::new(*swap_token_a_pubkey, false),
+        AccountMeta::new(*swap_token_b_pubkey, false),
+        AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(*swap_guardian, true),
+    ];
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
 /// Unpacks a reference from a bytes buffer.
 /// TODO actually pack / unpack instead of relying on normal memory layout.
 pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
@@ -738,6 +810,22 @@ mod tests {
         let mut expect = vec![5];
         expect.extend_from_slice(&destination_token_amount.to_le_bytes());
         expect.extend_from_slice(&maximum_pool_token_amount.to_le_bytes());
+        assert_eq!(packed, expect);
+        let unpacked = SwapInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+    }
+
+    #[test]
+    fn pack_deposit_one_no_pool() {
+        let source_token_amount = 10u64;
+        let check = SwapInstruction::DepositSingleTokenTypeNoPoolOwnership(
+            DepositSingleTokenTypeNoPoolOwnership {
+                source_token_amount,
+            },
+        );
+        let packed = check.pack();
+        let mut expect = vec![6];
+        expect.extend_from_slice(&source_token_amount.to_le_bytes());
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
